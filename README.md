@@ -5,4 +5,4 @@ Structural grep
 
 LICENSE
 -------
-Apache V2
+Apache License V2
