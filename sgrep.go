@@ -167,16 +167,7 @@ type Receiver struct {
 	level          int
 }
 
-func (rcvr *Receiver) beforeHeader(level int) {
-	if level > 0 {
-		rcvr.beforeBody(level - 1)
-	}
-}
-
 func (rcvr *Receiver) beforeBody(level int) {
-	if level < 0 {
-		return
-	}
 	info := rcvr.infos[level]
 	if !info.headerPrinted {
 		if level > 0 {
@@ -206,6 +197,18 @@ func (rcvr *Receiver) StartLevel(buffer []byte, header *parser.Range) error {
 }
 
 func (rcvr *Receiver) EndLevel(buffer []byte, footer *parser.Range) error {
+	rcvr.level--
+	info := rcvr.infos[len(rcvr.infos)-1]
+	
+	info.found = info.found || findInBuffer(rcvr.re, buffer, footer)
+	if info.found {
+		rcvr.showRange(buffer, footer)
+		
+		if rcvr.level > 0 {
+			rcvr.infos[rcvr.level].found = true
+		}
+	}
+	
 	rcvr.infos = rcvr.infos[:len(rcvr.infos)-1]
 	return nil
 }
@@ -253,6 +256,10 @@ func (rcvr *Receiver) showLine(buffer []byte, offs int, line int) int {
 }
 
 func (rcvr *Receiver) showRange(buffer []byte, r *parser.Range) {
+	if r == nil {
+		return
+	}
+	
 	offs := relocateLineStart(buffer, r.MinOffs)
 	for line := r.MinLine; line <= r.MaxLine; line++ {
 		offs = rcvr.showLine(buffer, offs, line)
@@ -269,7 +276,10 @@ func (rcvr *Receiver) FinalBlock(buffer []byte, header, body, footer *parser.Ran
 		return nil
 	}
 
-	rcvr.beforeBody(rcvr.level - 1)
+	if rcvr.level > 0 {
+		rcvr.beforeBody(rcvr.level - 1)
+		rcvr.infos[rcvr.level - 1].found = true
+	}
 
 	if header != nil {
 		rcvr.showRange(buffer, header)

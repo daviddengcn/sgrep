@@ -1,20 +1,20 @@
 package parser
 
 import (
-	//	"bytes"
+//	"bytes"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io"
 	"io/ioutil"
-	//	"strings"
+//	"strings"
 )
 
 type GoParser struct{}
 
 func rangeOfPos(fs *token.FileSet, min, max token.Pos) Range {
 	minPosition, maxPosition := fs.Position(min), fs.Position(max)
-	return Range{
+	return Range {
 		MinOffs: minPosition.Offset,
 		MaxOffs: maxPosition.Offset,
 		MinLine: minPosition.Line,
@@ -26,11 +26,11 @@ func maxOfFieldLists(fl *ast.FieldList) token.Pos {
 	if fl == nil {
 		return token.NoPos
 	}
-
+	
 	if fl.Closing.IsValid() {
 		return fl.Closing
 	}
-	return fl.List[len(fl.List)-1].End() - 1
+	return fl.List[len(fl.List) - 1].End() - 1
 }
 
 func (*GoParser) Parse(in io.Reader, rcvr Receiver) error {
@@ -44,10 +44,10 @@ func (*GoParser) Parse(in io.Reader, rcvr Receiver) error {
 	if err != nil {
 		return err
 	}
-	//	body := rangeOfPos(fs, f.Pos(), f.End() - 1)
-	//	rcvr.FinalBlock(src, nil, &body, nil)
+//	body := rangeOfPos(fs, f.Pos(), f.End() - 1)
+//	rcvr.FinalBlock(src, nil, &body, nil)
 
-	rgPackage := rangeOfPos(fs, f.Package, f.Name.End()-1)
+	rgPackage := rangeOfPos(fs, f.Package, f.Name.End() - 1)
 	if err := rcvr.StartLevel(src, &rgPackage); err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (*GoParser) Parse(in io.Reader, rcvr Receiver) error {
 			var body *Range
 			if d.Body != nil && len(d.Body.List) > 0 {
 				list := d.Body.List
-				r := rangeOfPos(fs, list[0].Pos(), list[len(list)-1].End()-1)
+				r := rangeOfPos(fs, list[0].Pos(), list[len(list) - 1].End() - 1)
 				body = &r
 			}
 			var footer *Range
@@ -78,36 +78,36 @@ func (*GoParser) Parse(in io.Reader, rcvr Receiver) error {
 			}
 			rcvr.FinalBlock(src, &header, body, footer)
 		default:
-			body := rangeOfPos(fs, d.Pos(), d.End()-1)
+			body := rangeOfPos(fs, d.Pos(), d.End() - 1)
 			rcvr.FinalBlock(src, nil, &body, nil)
 		}
 	}
-
+	
 	if err := rcvr.EndLevel(src, nil); err != nil {
 		return err
 	}
-	/*
-		gp := &goProgram{}
+/*
+	gp := &goProgram{}
 
-		gp.pkgLine = "package " + f.Name.String()
+	gp.pkgLine = "package " + f.Name.String()
 
-		for _, decl := range f.Decls {
-			var src bytes.Buffer
-			(&printer.Config{Mode: printer.UseSpaces, Tabwidth: 4}).Fprint(&src, fs, decl)
-			lines := strings.Split(src.String(), "\n")
-			var block Lines
-			if len(lines) >= 2 {
-				block.HeaderField = lines[:1]
-				block.BodyField = lines[1 : len(lines)-1]
-				block.FooterField = lines[len(lines)-1:]
-			} else if len(lines) == 1 {
-				block.HeaderField = lines
-			} else {
-				continue
-			}
-
-			gp.blocks = append(gp.blocks, block)
+	for _, decl := range f.Decls {
+		var src bytes.Buffer
+		(&printer.Config{Mode: printer.UseSpaces, Tabwidth: 4}).Fprint(&src, fs, decl)
+		lines := strings.Split(src.String(), "\n")
+		var block Lines
+		if len(lines) >= 2 {
+			block.HeaderField = lines[:1]
+			block.BodyField = lines[1 : len(lines)-1]
+			block.FooterField = lines[len(lines)-1:]
+		} else if len(lines) == 1 {
+			block.HeaderField = lines
+		} else {
+			continue
 		}
-	*/
+
+		gp.blocks = append(gp.blocks, block)
+	}
+*/
 	return nil
 }
