@@ -10,6 +10,7 @@ import (
 	"github.com/daviddengcn/go-colortext"
 	"github.com/daviddengcn/go-villa"
 	"github.com/daviddengcn/sgrep/parser"
+	"github.com/daviddengcn/sgrep/parser/go"
 )
 
 func markAndPrint(ln int, re *regexp.Regexp, line []byte) {
@@ -152,7 +153,7 @@ func grep(re *regexp.Regexp, t parser.Node, parents []*GrepInfo) (bool, error) {
 type LevelInfo struct {
 	headerPrinted bool
 	headerBuffer  []byte
-	header        *parser.Range
+	header        *sparser.Range
 
 	hiddenChidren int
 	hiddenLines   int
@@ -180,7 +181,7 @@ func (rcvr *Receiver) beforeBody(level int) {
 	}
 }
 
-func (rcvr *Receiver) StartLevel(buffer []byte, header *parser.Range) error {
+func (rcvr *Receiver) StartLevel(buffer []byte, header *sparser.Range) error {
 	info := &LevelInfo{
 		headerBuffer: buffer,
 		header:       header,
@@ -196,7 +197,7 @@ func (rcvr *Receiver) StartLevel(buffer []byte, header *parser.Range) error {
 	return nil
 }
 
-func (rcvr *Receiver) EndLevel(buffer []byte, footer *parser.Range) error {
+func (rcvr *Receiver) EndLevel(buffer []byte, footer *sparser.Range) error {
 	rcvr.level--
 	info := rcvr.infos[len(rcvr.infos)-1]
 	
@@ -213,7 +214,7 @@ func (rcvr *Receiver) EndLevel(buffer []byte, footer *parser.Range) error {
 	return nil
 }
 
-func findInBuffer(re *regexp.Regexp, buffer []byte, r *parser.Range) bool {
+func findInBuffer(re *regexp.Regexp, buffer []byte, r *sparser.Range) bool {
 	if r == nil {
 		return false
 	}
@@ -255,7 +256,7 @@ func (rcvr *Receiver) showLine(buffer []byte, offs int, line int) int {
 	return end
 }
 
-func (rcvr *Receiver) showRange(buffer []byte, r *parser.Range) {
+func (rcvr *Receiver) showRange(buffer []byte, r *sparser.Range) {
 	if r == nil {
 		return
 	}
@@ -266,7 +267,7 @@ func (rcvr *Receiver) showRange(buffer []byte, r *parser.Range) {
 	}
 }
 
-func (rcvr *Receiver) FinalBlock(buffer []byte, header, body, footer *parser.Range) error {
+func (rcvr *Receiver) FinalBlock(buffer []byte, header, body, footer *sparser.Range) error {
 	found := findInBuffer(rcvr.re, buffer, header)
 	found = found || findInBuffer(rcvr.re, buffer, body)
 	found = found || findInBuffer(rcvr.re, buffer, footer)
@@ -310,7 +311,7 @@ func main() {
 	pat := "int"
 	re := regexp.MustCompilePOSIX(pat)
 
-	p := &parser.GoParser{}
+	p := &goparser.GoParser{}
 
 	f, err := fn.Open()
 	if err != nil {

@@ -1,20 +1,20 @@
-package parser
+package goparser
 
 import (
-//	"bytes"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io"
 	"io/ioutil"
-//	"strings"
+	
+	"github.com/daviddengcn/sgrep/parser"
 )
 
 type GoParser struct{}
 
-func rangeOfPos(fs *token.FileSet, min, max token.Pos) Range {
+func rangeOfPos(fs *token.FileSet, min, max token.Pos) sparser.Range {
 	minPosition, maxPosition := fs.Position(min), fs.Position(max)
-	return Range {
+	return sparser.Range {
 		MinOffs: minPosition.Offset,
 		MaxOffs: maxPosition.Offset,
 		MinLine: minPosition.Line,
@@ -33,7 +33,7 @@ func maxOfFieldLists(fl *ast.FieldList) token.Pos {
 	return fl.List[len(fl.List) - 1].End() - 1
 }
 
-func (*GoParser) Parse(in io.Reader, rcvr Receiver) error {
+func (*GoParser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 	src, err := ioutil.ReadAll(in)
 	if err != nil {
 		return err
@@ -65,13 +65,13 @@ func (*GoParser) Parse(in io.Reader, rcvr Receiver) error {
 				endOfFunc = maxOfFieldLists(d.Type.Params)
 			}
 			header := rangeOfPos(fs, d.Type.Func, endOfFunc)
-			var body *Range
+			var body *sparser.Range
 			if d.Body != nil && len(d.Body.List) > 0 {
 				list := d.Body.List
 				r := rangeOfPos(fs, list[0].Pos(), list[len(list) - 1].End() - 1)
 				body = &r
 			}
-			var footer *Range
+			var footer *sparser.Range
 			if d.Body != nil {
 				r := rangeOfPos(fs, d.Body.Rbrace, d.Body.Rbrace)
 				footer = &r
