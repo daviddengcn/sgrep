@@ -27,7 +27,7 @@ type Receiver interface {
 	StartLevel(buffer []byte, header *Range) error
 	EndLevel(buffer []byte, footer *Range) error
 	// final block
-	FinalBlock(buffer []byte, header, body, footer *Range) error
+	FinalBlock(buffer []byte, body *Range) error
 }
 
 type Parser interface {

@@ -11,6 +11,7 @@ import (
 	"github.com/daviddengcn/go-villa"
 	"github.com/daviddengcn/sgrep/parser"
 	_ "github.com/daviddengcn/sgrep/parser/go"
+	_ "github.com/daviddengcn/sgrep/parser/xml"
 )
 
 func markAndPrint(ln int, re *regexp.Regexp, line []byte) {
@@ -164,16 +165,13 @@ type Receiver struct {
 	re *regexp.Regexp
 	// 1-based
 	maxPrintedLine int
-	infos          []*LevelInfo
-	level          int
+	infos          []LevelInfo
 }
 
 func (rcvr *Receiver) beforeBody(level int) {
 	info := rcvr.infos[level]
 	if !info.headerPrinted {
-		if level > 0 {
-			rcvr.beforeBody(level - 1)
-		}
+		rcvr.beforeBody(level - 1)
 
 		// Print the header
 		rcvr.showRange(info.headerBuffer, info.header)
@@ -182,32 +180,28 @@ func (rcvr *Receiver) beforeBody(level int) {
 }
 
 func (rcvr *Receiver) StartLevel(buffer []byte, header *sparser.Range) error {
-	info := &LevelInfo{
+	rcvr.infos = append(rcvr.infos, LevelInfo{
 		headerBuffer: buffer,
 		header:       header,
-	}
-	rcvr.infos = append(rcvr.infos, info)
+	})
+	info := &rcvr.infos[len(rcvr.infos) - 1]
 
 	if findInBuffer(rcvr.re, buffer, header) {
 		info.found = true
-		rcvr.beforeBody(rcvr.level)
+		rcvr.beforeBody(len(rcvr.infos) - 1)
 	}
 
-	rcvr.level++
 	return nil
 }
 
 func (rcvr *Receiver) EndLevel(buffer []byte, footer *sparser.Range) error {
-	rcvr.level--
 	info := rcvr.infos[len(rcvr.infos)-1]
 
 	info.found = info.found || findInBuffer(rcvr.re, buffer, footer)
 	if info.found {
 		rcvr.showRange(buffer, footer)
 
-		if rcvr.level > 0 {
-			rcvr.infos[rcvr.level].found = true
-		}
+		rcvr.infos[len(rcvr.infos)-2].found = true
 	}
 
 	rcvr.infos = rcvr.infos[:len(rcvr.infos)-1]
@@ -267,24 +261,16 @@ func (rcvr *Receiver) showRange(buffer []byte, r *sparser.Range) {
 	}
 }
 
-func (rcvr *Receiver) FinalBlock(buffer []byte, header, body, footer *sparser.Range) error {
-	found := findInBuffer(rcvr.re, buffer, header)
-	found = found || findInBuffer(rcvr.re, buffer, body)
-	found = found || findInBuffer(rcvr.re, buffer, footer)
-
-	if !found {
-		// no match skipped
-		return nil
+func (rcvr *Receiver) FinalBlock(buffer []byte, body *sparser.Range) error {
+	if !findInBuffer(rcvr.re, buffer, body) {
+fmt.Println("FFF", string(buffer[body.MinOffs:body.MaxOffs+1]))
+		// no match, skipped
+//		return nil
 	}
 
-	if rcvr.level > 0 {
-		rcvr.beforeBody(rcvr.level - 1)
-		rcvr.infos[rcvr.level-1].found = true
-	}
+	rcvr.beforeBody(len(rcvr.infos) - 1)
+	rcvr.infos[len(rcvr.infos) - 1].found = true
 
-	if header != nil {
-		rcvr.showRange(buffer, header)
-	}
 	if body != nil {
 		offs := body.MinOffs
 		for line := body.MinLine; line <= body.MaxLine; line++ {
@@ -294,21 +280,17 @@ func (rcvr *Receiver) FinalBlock(buffer []byte, header, body, footer *sparser.Ra
 				rcvr.showLine(buffer, relocateLineStart(buffer, offs), line)
 			}
 
-			if end < len(buffer) {
-				end++
-			}
-			offs = end
+			offs = end+1
 		}
-	}
-	if footer != nil {
-		rcvr.showRange(buffer, footer)
 	}
 	return nil
 }
 
 func main() {
-	fn := villa.Path("sgrep.go")
-	pat := "int"
+//	fn := villa.Path("sgrep.go")
+//	pat := "int"
+	fn := villa.Path("pom.xml")
+	pat := "commons-math"
 	re := regexp.MustCompilePOSIX(pat)
 
 	var err error
@@ -325,6 +307,11 @@ func main() {
 
 	receiver := Receiver{
 		re: re,
+		infos: []LevelInfo {
+			LevelInfo{
+				headerPrinted: true,
+			},
+		},
 	}
 
 	if err := p.Parse(f, &receiver); err != nil {

@@ -82,10 +82,20 @@ func (GoParser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 				r := rangeOfPos(fs, d.Body.Rbrace, d.Body.Rbrace)
 				footer = &r
 			}
-			rcvr.FinalBlock(src, &header, body, footer)
+			if err := rcvr.StartLevel(src, &header); err != nil {
+				return err
+			}
+			if err := rcvr.FinalBlock(src, body); err != nil {
+				return err
+			}
+			if err := rcvr.EndLevel(src, footer); err != nil {
+				return err
+			}
 		default:
 			body := rangeOfPos(fs, d.Pos(), d.End()-1)
-			rcvr.FinalBlock(src, nil, &body, nil)
+			if err := rcvr.FinalBlock(src, &body); err != nil {
+				return err
+			}
 		}
 	}
 
