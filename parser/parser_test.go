@@ -1,43 +1,37 @@
 package sparser
 
 import (
-	"strings"
+	"errors"
+	"io"
 	"testing"
 
 	"github.com/daviddengcn/go-assert"
 )
 
-func TestLines(t *testing.T) {
-	lines := Lines{
-		HeaderField: []string{
-			"lines {",
-		},
-		BodyField: []string{
-			"  Hello,",
-			"  World!",
-		},
-		FooterField: []string{
-			"} // lines",
-		},
-	}
-	results := []string{}
+type emptyParser struct{}
 
-	isFinal, header, err := lines.Start()
-	assert.NoError(t, err)
-	assert.Equals(t, "isFinal", true, isFinal)
-	results = append(results, header...)
+func (*emptyParser) Parse(in io.Reader, rcvr Receiver) error {
+	return nil
+}
 
-	body, err := lines.Body()
-	assert.NoError(t, err)
-	results = append(results, body...)
+func TestRegister(t *testing.T) {
+	_, err := New(".TestRegister")
+	assert.Equals(t, "err", err.Deepest(), UnknownExtension)
 
-	footer, err := lines.End()
-	assert.NoError(t, err)
-	results = append(results, footer...)
+	p := &emptyParser{}
+	Register(".TestRegister", func() (Parser, error) {
+		return p, nil
+	})
 
-	assert.LinesEqual(t, "results", results, strings.Split(
-		`lines {
-  Hello,
-  World!
-} // lines`, "\n"))
+	ps, err := New(".TestRegister")
+	assert.NoErrorf(t, "New(.TestRegister): %v", err)
+	assert.Equals(t, "Parser", ps, p)
+
+	myErr := errors.New("myerr")
+	Register(".TestRegisterError", func() (Parser, error) {
+		return nil, myErr
+	})
+	ps, err = New(".TestRegisterError")
+	assert.Equals(t, "ps", ps, nil)
+	assert.Equals(t, "err", err.Deepest(), myErr)
 }

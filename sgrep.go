@@ -10,7 +10,7 @@ import (
 	"github.com/daviddengcn/go-colortext"
 	"github.com/daviddengcn/go-villa"
 	"github.com/daviddengcn/sgrep/parser"
-	"github.com/daviddengcn/sgrep/parser/go"
+	_ "github.com/daviddengcn/sgrep/parser/go"
 )
 
 func markAndPrint(ln int, re *regexp.Regexp, line []byte) {
@@ -200,16 +200,16 @@ func (rcvr *Receiver) StartLevel(buffer []byte, header *sparser.Range) error {
 func (rcvr *Receiver) EndLevel(buffer []byte, footer *sparser.Range) error {
 	rcvr.level--
 	info := rcvr.infos[len(rcvr.infos)-1]
-	
+
 	info.found = info.found || findInBuffer(rcvr.re, buffer, footer)
 	if info.found {
 		rcvr.showRange(buffer, footer)
-		
+
 		if rcvr.level > 0 {
 			rcvr.infos[rcvr.level].found = true
 		}
 	}
-	
+
 	rcvr.infos = rcvr.infos[:len(rcvr.infos)-1]
 	return nil
 }
@@ -260,7 +260,7 @@ func (rcvr *Receiver) showRange(buffer []byte, r *sparser.Range) {
 	if r == nil {
 		return
 	}
-	
+
 	offs := relocateLineStart(buffer, r.MinOffs)
 	for line := r.MinLine; line <= r.MaxLine; line++ {
 		offs = rcvr.showLine(buffer, offs, line)
@@ -279,7 +279,7 @@ func (rcvr *Receiver) FinalBlock(buffer []byte, header, body, footer *sparser.Ra
 
 	if rcvr.level > 0 {
 		rcvr.beforeBody(rcvr.level - 1)
-		rcvr.infos[rcvr.level - 1].found = true
+		rcvr.infos[rcvr.level-1].found = true
 	}
 
 	if header != nil {
@@ -311,7 +311,11 @@ func main() {
 	pat := "int"
 	re := regexp.MustCompilePOSIX(pat)
 
-	p := &goparser.GoParser{}
+	var err error
+	p, err := sparser.New(fn.Ext())
+	if err != nil {
+		log.Fatalf("New Parser failed for suffix %s: %v", fn.Ext(), err)
+	}
 
 	f, err := fn.Open()
 	if err != nil {
@@ -326,7 +330,4 @@ func main() {
 	if err := p.Parse(f, &receiver); err != nil {
 		log.Fatalf("Parsed failed: %v", err)
 	}
-
-	//	fmt.Println(strings.Join(parser.AllLines(t), "\n"))
-	//grep(re, t, nil)
 }
