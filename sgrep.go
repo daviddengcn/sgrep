@@ -184,7 +184,7 @@ func (rcvr *Receiver) StartLevel(buffer []byte, header *sparser.Range) error {
 		headerBuffer: buffer,
 		header:       header,
 	})
-	info := &rcvr.infos[len(rcvr.infos) - 1]
+	info := &rcvr.infos[len(rcvr.infos)-1]
 
 	if findInBuffer(rcvr.re, buffer, header) {
 		info.found = true
@@ -263,13 +263,13 @@ func (rcvr *Receiver) showRange(buffer []byte, r *sparser.Range) {
 
 func (rcvr *Receiver) FinalBlock(buffer []byte, body *sparser.Range) error {
 	if !findInBuffer(rcvr.re, buffer, body) {
-//fmt.Println("FFF", string(buffer[body.MinOffs:body.MaxOffs+1]))
+		//fmt.Println("FFF", string(buffer[body.MinOffs:body.MaxOffs+1]))
 		// no match, skipped
 		return nil
 	}
 
 	rcvr.beforeBody(len(rcvr.infos) - 1)
-	rcvr.infos[len(rcvr.infos) - 1].found = true
+	rcvr.infos[len(rcvr.infos)-1].found = true
 
 	if body != nil {
 		offs := body.MinOffs
@@ -280,15 +280,15 @@ func (rcvr *Receiver) FinalBlock(buffer []byte, body *sparser.Range) error {
 				rcvr.showLine(buffer, relocateLineStart(buffer, offs), line)
 			}
 
-			offs = end+1
+			offs = end + 1
 		}
 	}
 	return nil
 }
 
 func main() {
-//	fn := villa.Path("sgrep.go")
-//	pat := "int"
+	//	fn := villa.Path("sgrep.go")
+	//	pat := "int"
 	fn := villa.Path("pom.xml")
 	pat := "google"
 	re := regexp.MustCompilePOSIX(pat)
@@ -307,7 +307,7 @@ func main() {
 
 	receiver := Receiver{
 		re: re,
-		infos: []LevelInfo {
+		infos: []LevelInfo{
 			LevelInfo{
 				headerPrinted: true,
 			},

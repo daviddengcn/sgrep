@@ -1,12 +1,13 @@
 package xml
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"text/scanner"
-	"fmt"
-	"bytes"
-	
+
+	"github.com/daviddengcn/go-villa"
 	"github.com/daviddengcn/sgrep/parser"
 )
 
@@ -73,7 +74,8 @@ func scanTo3(s *scanner.Scanner, target0, target1, target2 rune) bool {
 			return true
 		case target1:
 			if target0 == target1 {
-				loop: for {
+			loop:
+				for {
 					switch s.Next() {
 					case scanner.EOF:
 						return false
@@ -114,7 +116,7 @@ func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string
 	if lt == scanner.EOF {
 		return TP_NONE, sparser.Range{}, ""
 	}
-	
+
 	start := s.Pos()
 	if lt != '<' {
 		// malformed, return as a final block
@@ -125,7 +127,7 @@ func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string
 			MaxLine: start.Line,
 		}, ""
 	}
-	
+
 	switch tp := s.Next(); tp {
 	case '?':
 		// PI
@@ -203,13 +205,13 @@ func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string
 		}, ""
 	default:
 		// start tag
-		name := []rune {tp}
+		name := []rune{tp}
 		for {
 			r := s.Next()
 			if r == scanner.EOF || r == '>' {
 				break
 			}
-			
+
 			if r == '/' {
 				if s.Peek() == '>' {
 					s.Next()
@@ -222,9 +224,10 @@ func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string
 					}, string(name)
 				}
 			}
-			
+
 			if isWhiteSpace(r) {
-				loop: for {
+			loop:
+				for {
 					switch s.Next() {
 					case scanner.EOF:
 						p := s.Pos()
@@ -263,19 +266,30 @@ func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string
 	}
 }
 
+func lastIndexOf(stack villa.StringSlice, name string) int {
+	for i := len(stack) - 1; i >= 0; i-- {
+		if stack[i] == name {
+			return i
+		}
+	}
+	return -1
+}
+
 func (XmlParser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 	src, err := ioutil.ReadAll(in)
 	if err != nil {
 		return err
 	}
-	s := &scanner.Scanner {
+	s := &scanner.Scanner{
 		Error: func(s *scanner.Scanner, msg string) {
 			fmt.Println("Error", msg)
 		},
 	}
 	s.Init(bytes.NewBuffer(src))
 	s.Mode = 0
-	
+
+	var stack villa.StringSlice
+
 	for s.Peek() != scanner.EOF {
 		blockType, rg, name := scanBlock(s)
 		switch blockType {
@@ -284,16 +298,41 @@ func (XmlParser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 				return err
 			}
 		case TP_START:
-			_ = name
-			if err := rcvr.StartLevel(src, &rg); err != nil {
-				return err
+			if len(name) > 0 {
+				if err := rcvr.StartLevel(src, &rg); err != nil {
+					return err
+				}
+				stack.Add(name)
+			} else {
+				if err := rcvr.FinalBlock(src, &rg); err != nil {
+					return err
+				}
 			}
 		case TP_END:
-			if err := rcvr.EndLevel(src, &rg); err != nil {
-				return err
+			if len(name) > 0 {
+				p := lastIndexOf(stack, name)
+				if p < 0 {
+					if err := rcvr.FinalBlock(src, &rg); err != nil {
+						return err
+					}
+				} else {
+					for len(stack) < p+1 {
+						if err := rcvr.EndLevel(src, nil); err != nil {
+							return err
+						}
+						stack.Pop()
+					}
+					if err := rcvr.EndLevel(src, &rg); err != nil {
+						return err
+					}
+				}
+			} else {
+				if err := rcvr.FinalBlock(src, &rg); err != nil {
+					return err
+				}
 			}
 		}
 	}
-	
+
 	return nil
 }
