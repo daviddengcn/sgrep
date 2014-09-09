@@ -24,12 +24,6 @@ func isWhiteSpace(r rune) bool {
 	return r == ' ' || r == '\t' || r == '\r' || r == '\n'
 }
 
-func skipWhiteSpace(s *scanner.Scanner) {
-	for isWhiteSpace(s.Peek()) {
-		s.Next()
-	}
-}
-
 const (
 	TP_NONE = iota
 	TP_FINAL
@@ -97,8 +91,24 @@ func scanTo3(s *scanner.Scanner, target0, target1, target2 rune) bool {
 	}
 }
 
+func rangeFromStart(s *scanner.Scanner, start scanner.Position) sparser.Range {
+	p := s.Pos()
+	return sparser.Range{
+		MinOffs: start.Offset,
+		MaxOffs: p.Offset,
+		MinLine: start.Line,
+		MaxLine: p.Line,
+	}
+}
+
 func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string) {
-	skipWhiteSpace(s)
+	if s.Peek() != '<' {
+		start := s.Pos()
+		for s.Peek() != scanner.EOF && s.Peek() != '<' {
+			s.Next()
+		}
+		return TP_FINAL, rangeFromStart(s, start), ""
+	}
 	// '<'
 	lt := s.Next()
 	if lt == scanner.EOF {

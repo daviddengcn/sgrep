@@ -263,9 +263,9 @@ func (rcvr *Receiver) showRange(buffer []byte, r *sparser.Range) {
 
 func (rcvr *Receiver) FinalBlock(buffer []byte, body *sparser.Range) error {
 	if !findInBuffer(rcvr.re, buffer, body) {
-fmt.Println("FFF", string(buffer[body.MinOffs:body.MaxOffs+1]))
+//fmt.Println("FFF", string(buffer[body.MinOffs:body.MaxOffs+1]))
 		// no match, skipped
-//		return nil
+		return nil
 	}
 
 	rcvr.beforeBody(len(rcvr.infos) - 1)
@@ -290,7 +290,7 @@ func main() {
 //	fn := villa.Path("sgrep.go")
 //	pat := "int"
 	fn := villa.Path("pom.xml")
-	pat := "commons-math"
+	pat := "google"
 	re := regexp.MustCompilePOSIX(pat)
 
 	var err error
