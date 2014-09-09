@@ -13,6 +13,7 @@ import (
 	"github.com/daviddengcn/sgrep/parser"
 	_ "github.com/daviddengcn/sgrep/parser/go"
 	_ "github.com/daviddengcn/sgrep/parser/xml"
+	_ "github.com/daviddengcn/sgrep/parser/txt"
 )
 
 func markAndPrint(ln int, re *regexp.Regexp, line []byte) {
@@ -161,6 +162,9 @@ func (rcvr *Receiver) FinalBlock(buffer []byte, body *sparser.Range) error {
 		offs := body.MinOffs
 		for line := body.MinLine; line <= body.MaxLine; line++ {
 			end := findLineEnd(buffer, offs)
+			if end >= len(buffer) {
+				break
+			}
 
 			if rcvr.re.FindIndex(buffer[offs:end]) != nil {
 				rcvr.showLine(buffer, relocateLineStart(buffer, offs), line)
