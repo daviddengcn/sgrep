@@ -11,15 +11,13 @@ import (
 	"github.com/daviddengcn/sgrep/parser"
 )
 
-var xmlParser XmlParser
+type Parser struct{}
 
 func init() {
 	sparser.Register(".xml", func() (sparser.Parser, error) {
-		return xmlParser, nil
+		return Parser{}, nil
 	})
 }
-
-type XmlParser struct{}
 
 func isWhiteSpace(r rune) bool {
 	return r == ' ' || r == '\t' || r == '\r' || r == '\n'
@@ -275,7 +273,7 @@ func lastIndexOf(stack villa.StringSlice, name string) int {
 	return -1
 }
 
-func (XmlParser) Parse(in io.Reader, rcvr sparser.Receiver) error {
+func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 	src, err := ioutil.ReadAll(in)
 	if err != nil {
 		return err

@@ -10,15 +10,13 @@ import (
 	"github.com/daviddengcn/sgrep/parser"
 )
 
-var goParser GoParser
+type Parser struct{}
 
 func init() {
 	sparser.Register(".go", func() (sparser.Parser, error) {
-		return goParser, nil
+		return Parser{}, nil
 	})
 }
-
-type GoParser struct{}
 
 func rangeOfPos(fs *token.FileSet, min, max token.Pos) sparser.Range {
 	minPosition, maxPosition := fs.Position(min), fs.Position(max)
@@ -41,7 +39,7 @@ func maxOfFieldLists(fl *ast.FieldList) token.Pos {
 	return fl.List[len(fl.List)-1].End() - 1
 }
 
-func (GoParser) Parse(in io.Reader, rcvr sparser.Receiver) error {
+func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 	src, err := ioutil.ReadAll(in)
 	if err != nil {
 		return err
