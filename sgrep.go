@@ -13,7 +13,7 @@ import (
 
 func init() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: sgrep patter [files]\n")
+		fmt.Fprintf(os.Stderr, "Usage: sgrep <pattern> [files]\n")
 		flag.PrintDefaults()
 	}
 }
