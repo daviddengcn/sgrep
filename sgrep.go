@@ -1,14 +1,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"regexp"
-	"flag"
 	"strings"
 
-	"github.com/daviddengcn/sgrep/grep"
 	"github.com/daviddengcn/go-villa"
+	"github.com/daviddengcn/sgrep/grep"
 )
 
 func init() {
@@ -25,9 +25,9 @@ func printUsage() {
 
 func main() {
 	pExt := flag.String("ext", "", "Specify the extension. If not specified, extract from filename")
-	
+
 	flag.Parse()
-	
+
 	args := flag.Args()
 	if len(args) < 1 {
 		printUsage()
@@ -40,7 +40,7 @@ func main() {
 	}
 
 	re := regexp.MustCompilePOSIX(pat)
-	
+
 	if len(fns) > 0 {
 		for _, fn := range fns {
 			fmt.Println("File: " + fn)
