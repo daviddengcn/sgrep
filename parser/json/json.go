@@ -211,7 +211,6 @@ func scanRune(s *scanner.Scanner, out chan Part, stop villa.Stop, tp int, exp ru
 }
 
 func scanValue(s *scanner.Scanner, out chan Part, stop villa.Stop) (toStop bool) {
-	skipWhitespaces(s)
 	start := s.Pos()
 	switch s.Peek() {
 	case scanner.EOF:
@@ -300,6 +299,7 @@ func parse(src []byte, out chan Part, stop villa.Stop) {
 	s.Init(bytes.NewBuffer(src))
 	s.Mode = 0
 
+	skipWhitespaces(s)
 	if scanValue(s, out, stop) {
 		return
 	}
@@ -334,6 +334,7 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 loop:
 	for {
 		part := <-out
+	switchtp:
 		switch part.tp {
 		case TP_EOF:
 			break loop
@@ -342,30 +343,6 @@ loop:
 		case TP_ERROR:
 			return InvalidFormat
 
-		case TP_OBJECT_START:
-			if len(types) > 0 {
-				switch types[len(types)-1] {
-				case TP_ARRAY_START:
-					rg := makeRange(part.start, part.end)
-					if err := rcvr.StartLevel(src, &rg); err != nil {
-						return err
-					}
-				case TP_COLON:
-					rg := makeRange(keyStart, part.end)
-					if err := rcvr.StartLevel(src, &rg); err != nil {
-						return err
-					}
-					types[len(types)-1] = TP_OBJECT_START
-				}
-			} else {
-				rg := makeRange(part.start, part.end)
-				if err := rcvr.StartLevel(src, &rg); err != nil {
-					return err
-				}
-			}
-
-			types.Add(TP_OBJECT_START)
-
 		case TP_OBJECT_END, TP_ARRAY_END:
 			rg := makeRange(part.start, part.end)
 			if err := rcvr.EndLevel(src, &rg); err != nil {
@@ -373,66 +350,44 @@ loop:
 			}
 
 			types.Pop()
-		case TP_STRING:
-			if len(types) > 0 {
-				switch types[len(types)-1] {
-				case TP_OBJECT_START:
-					keyStart = part.start
-				case TP_ARRAY_START:
-				case TP_COLON:
-					rg := makeRange(keyStart, part.end)
-					if err := rcvr.FinalBlock(src, &rg); err != nil {
-						return err
-					}
-					types[len(types)-1] = TP_OBJECT_START
-				}
-			} else {
-				rg := makeRange(part.start, part.end)
-				if err := rcvr.FinalBlock(src, &rg); err != nil {
-					return err
-				}
-			}
+
 		case TP_COLON:
 			types[len(types)-1] = TP_COLON
-		case TP_ARRAY_START:
-			if len(types) > 0 {
-				switch types[len(types)-1] {
-				case TP_ARRAY_START:
-					rg := makeRange(part.start, part.end)
-					if err := rcvr.StartLevel(src, &rg); err != nil {
-						return err
-					}
-				case TP_COLON:
-					rg := makeRange(keyStart, part.end)
-					if err := rcvr.StartLevel(src, &rg); err != nil {
-						return err
-					}
-					types[len(types)-1] = TP_OBJECT_START
-				}
-				types.Add(TP_ARRAY_START)
-			}
+
 		case TP_COMMA:
 			rg := makeRange(part.start, part.end)
 			if err := rcvr.FinalBlock(src, &rg); err != nil {
 				return err
 			}
-		default:
+
+		default: // any type that could be a value
+			var rg sparser.Range
 			if len(types) > 0 {
 				switch types[len(types)-1] {
+				case TP_OBJECT_START:
+					// this is the key, save the start position and wait for colon
+					// and start of value to dump together
+					keyStart = part.start
+					break switchtp
 				case TP_ARRAY_START:
-					rg := makeRange(part.start, part.end)
-					if err := rcvr.FinalBlock(src, &rg); err != nil {
-						return err
-					}
+					// an element value in an array
+					rg = makeRange(part.start, part.end)
 				case TP_COLON:
-					rg := makeRange(keyStart, part.end)
-					if err := rcvr.FinalBlock(src, &rg); err != nil {
-						return err
-					}
+					// a value in an object
+					rg = makeRange(keyStart, part.end)
 					types[len(types)-1] = TP_OBJECT_START
 				}
 			} else {
-				rg := makeRange(part.start, part.end)
+				// first level value
+				rg = makeRange(part.start, part.end)
+			}
+
+			if part.tp == TP_OBJECT_START || part.tp == TP_ARRAY_START {
+				if err := rcvr.StartLevel(src, &rg); err != nil {
+					return err
+				}
+				types.Add(part.tp)
+			} else {
 				if err := rcvr.FinalBlock(src, &rg); err != nil {
 					return err
 				}
