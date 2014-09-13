@@ -69,7 +69,7 @@ func (rcvr *Receiver) beforeBody(level int) {
 		rcvr.showRange(info.headerBuffer, info.header)
 		info.headerPrinted = true
 	} else if !rcvr.fnPrinted {
-		fmt.Println("File: " + rcvr.fn)
+		fmt.Println(rcvr.fn)
 		rcvr.fnPrinted = true
 	}
 }
