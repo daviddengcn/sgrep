@@ -44,7 +44,7 @@ func markAndPrint(ln int, re *regexp.Regexp, line []byte) {
 type LevelInfo struct {
 	headerPrinted bool
 	headerBuffer  []byte
-	header        *sparser.Range
+	header        sparser.Range
 
 	hiddenChidren int
 	hiddenLines   int
@@ -74,7 +74,7 @@ func (rcvr *Receiver) beforeBody(level int) {
 	}
 }
 
-func (rcvr *Receiver) StartLevel(buffer []byte, header *sparser.Range) error {
+func (rcvr *Receiver) StartLevel(buffer []byte, header sparser.Range) error {
 	rcvr.infos = append(rcvr.infos, LevelInfo{
 		headerBuffer: buffer,
 		header:       header,
@@ -89,7 +89,7 @@ func (rcvr *Receiver) StartLevel(buffer []byte, header *sparser.Range) error {
 	return nil
 }
 
-func (rcvr *Receiver) EndLevel(buffer []byte, footer *sparser.Range) error {
+func (rcvr *Receiver) EndLevel(buffer []byte, footer sparser.Range) error {
 	info := rcvr.infos[len(rcvr.infos)-1]
 
 	info.found = info.found || findInBuffer(rcvr.re, buffer, footer)
@@ -104,8 +104,8 @@ func (rcvr *Receiver) EndLevel(buffer []byte, footer *sparser.Range) error {
 	return nil
 }
 
-func findInBuffer(re *regexp.Regexp, buffer []byte, r *sparser.Range) bool {
-	if r == nil {
+func findInBuffer(re *regexp.Regexp, buffer []byte, r sparser.Range) bool {
+	if r.IsEmpty() {
 		return false
 	}
 	return re.FindIndex(buffer[r.MinOffs:r.MaxOffs+1]) != nil
@@ -146,8 +146,8 @@ func (rcvr *Receiver) showLine(buffer []byte, offs int, line int) int {
 	return end
 }
 
-func (rcvr *Receiver) showRange(buffer []byte, r *sparser.Range) {
-	if r == nil {
+func (rcvr *Receiver) showRange(buffer []byte, r sparser.Range) {
+	if r.IsEmpty() {
 		return
 	}
 
@@ -157,7 +157,7 @@ func (rcvr *Receiver) showRange(buffer []byte, r *sparser.Range) {
 	}
 }
 
-func (rcvr *Receiver) FinalBlock(buffer []byte, body *sparser.Range) error {
+func (rcvr *Receiver) FinalBlock(buffer []byte, body sparser.Range) error {
 	if !findInBuffer(rcvr.re, buffer, body) {
 		// no match, skipped
 		return nil
@@ -166,7 +166,7 @@ func (rcvr *Receiver) FinalBlock(buffer []byte, body *sparser.Range) error {
 	rcvr.beforeBody(len(rcvr.infos) - 1)
 	rcvr.infos[len(rcvr.infos)-1].found = true
 
-	if body != nil {
+	if !body.IsEmpty() {
 		offs := body.MinOffs
 		for line := body.MinLine; line <= body.MaxLine; line++ {
 			end := findLineEnd(buffer, offs)

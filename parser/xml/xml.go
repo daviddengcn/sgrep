@@ -23,6 +23,12 @@ func isWhiteSpace(r rune) bool {
 	return r == ' ' || r == '\t' || r == '\r' || r == '\n'
 }
 
+func skipWhiteSpace(s *scanner.Scanner) {
+	for isWhiteSpace(s.Peek()) {
+		s.Next()
+	}
+}
+
 const (
 	TP_NONE = iota
 	TP_FINAL
@@ -91,53 +97,22 @@ func scanTo3(s *scanner.Scanner, target0, target1, target2 rune) bool {
 	}
 }
 
-func rangeFromStart(s *scanner.Scanner, start scanner.Position) sparser.Range {
-	p := s.Pos()
-	return sparser.Range{
-		MinOffs: start.Offset,
-		MaxOffs: p.Offset,
-		MinLine: start.Line,
-		MaxLine: p.Line,
-	}
-}
-
-func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string) {
+func scanBlock(s *scanner.Scanner) (blockType int, name string) {
 	if s.Peek() != '<' {
-		start := s.Pos()
 		for s.Peek() != scanner.EOF && s.Peek() != '<' {
 			s.Next()
 		}
-		return TP_FINAL, rangeFromStart(s, start), ""
+		return TP_FINAL, ""
 	}
 	// '<'
-	lt := s.Next()
-	if lt == scanner.EOF {
-		return TP_NONE, sparser.Range{}, ""
-	}
-
-	start := s.Pos()
-	if lt != '<' {
-		// malformed, return as a final block
-		return TP_FINAL, sparser.Range{
-			MinOffs: start.Offset,
-			MaxOffs: start.Offset,
-			MinLine: start.Line,
-			MaxLine: start.Line,
-		}, ""
-	}
+	s.Next()
 
 	switch tp := s.Next(); tp {
 	case '?':
 		// PI
 		// to find ?>
 		scanTo2(s, '?', '>')
-		p := s.Pos()
-		return TP_FINAL, sparser.Range{
-			MinOffs: start.Offset,
-			MaxOffs: p.Offset,
-			MinLine: start.Line,
-			MaxLine: p.Line,
-		}, ""
+		return TP_FINAL, ""
 	case '!':
 		switch s.Next() {
 		case scanner.EOF:
@@ -155,13 +130,7 @@ func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string
 			// find >
 			scanTo1(s, '>')
 		}
-		p := s.Pos()
-		return TP_FINAL, sparser.Range{
-			MinOffs: start.Offset,
-			MaxOffs: p.Offset,
-			MinLine: start.Line,
-			MaxLine: p.Line,
-		}, ""
+		return TP_FINAL, ""
 	case '/':
 		// end tag
 		name := make([]rune, 0, 8)
@@ -176,31 +145,14 @@ func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string
 			}
 			name = append(name, r)
 		}
-		p := s.Pos()
 		if len(name) == 0 {
 			// malformed
-			return TP_FINAL, sparser.Range{
-				MinOffs: start.Offset,
-				MaxOffs: p.Offset,
-				MinLine: start.Line,
-				MaxLine: p.Line,
-			}, ""
+			return TP_FINAL, ""
 		}
-		return TP_END, sparser.Range{
-			MinOffs: start.Offset,
-			MaxOffs: p.Offset,
-			MinLine: start.Line,
-			MaxLine: p.Line,
-		}, string(name)
+		return TP_END, string(name)
 	case '>':
 		// malformed
-		p := s.Pos()
-		return TP_FINAL, sparser.Range{
-			MinOffs: start.Offset,
-			MaxOffs: p.Offset,
-			MinLine: start.Line,
-			MaxLine: p.Line,
-		}, ""
+		return TP_FINAL, ""
 	default:
 		// start tag
 		name := []rune{tp}
@@ -213,13 +165,7 @@ func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string
 			if r == '/' {
 				if s.Peek() == '>' {
 					s.Next()
-					p := s.Pos()
-					return TP_FINAL, sparser.Range{
-						MinOffs: start.Offset,
-						MaxOffs: p.Offset,
-						MinLine: start.Line,
-						MaxLine: p.Line,
-					}, string(name)
+					return TP_FINAL, string(name)
 				}
 			}
 
@@ -228,23 +174,11 @@ func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string
 				for {
 					switch s.Next() {
 					case scanner.EOF:
-						p := s.Pos()
-						return TP_FINAL, sparser.Range{
-							MinOffs: start.Offset,
-							MaxOffs: p.Offset,
-							MinLine: start.Line,
-							MaxLine: p.Line,
-						}, string(name)
+						return TP_FINAL, string(name)
 					case '/':
 						if s.Peek() == '>' {
 							s.Next()
-							p := s.Pos()
-							return TP_FINAL, sparser.Range{
-								MinOffs: start.Offset,
-								MaxOffs: p.Offset,
-								MinLine: start.Line,
-								MaxLine: p.Line,
-							}, string(name)
+							return TP_FINAL, string(name)
 						}
 					case '>':
 						break loop
@@ -254,13 +188,7 @@ func scanBlock(s *scanner.Scanner) (blockType int, rg sparser.Range, name string
 			}
 			name = append(name, r)
 		}
-		p := s.Pos()
-		return TP_START, sparser.Range{
-			MinOffs: start.Offset,
-			MaxOffs: p.Offset,
-			MinLine: start.Line,
-			MaxLine: p.Line,
-		}, string(name)
+		return TP_START, string(name)
 	}
 }
 
@@ -289,20 +217,29 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 	var stack villa.StringSlice
 
 	for s.Peek() != scanner.EOF {
-		blockType, rg, name := scanBlock(s)
+		skipWhiteSpace(s)
+		start := s.Pos()
+		blockType, name := scanBlock(s)
+		end := s.Pos()
+		rg := sparser.Range{
+			MinOffs: start.Offset,
+			MaxOffs: end.Offset - 1,
+			MinLine: start.Line,
+			MaxLine: end.Line,
+		}
 		switch blockType {
 		case TP_FINAL:
-			if err := rcvr.FinalBlock(src, &rg); err != nil {
+			if err := rcvr.FinalBlock(src, rg); err != nil {
 				return err
 			}
 		case TP_START:
 			if len(name) > 0 {
-				if err := rcvr.StartLevel(src, &rg); err != nil {
+				if err := rcvr.StartLevel(src, rg); err != nil {
 					return err
 				}
 				stack.Add(name)
 			} else {
-				if err := rcvr.FinalBlock(src, &rg); err != nil {
+				if err := rcvr.FinalBlock(src, rg); err != nil {
 					return err
 				}
 			}
@@ -310,22 +247,23 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 			if len(name) > 0 {
 				p := lastIndexOf(stack, name)
 				if p < 0 {
-					if err := rcvr.FinalBlock(src, &rg); err != nil {
+					if err := rcvr.FinalBlock(src, rg); err != nil {
 						return err
 					}
 				} else {
 					for len(stack) < p+1 {
-						if err := rcvr.EndLevel(src, nil); err != nil {
+						// auto close
+						if err := rcvr.EndLevel(src, sparser.Range{}); err != nil {
 							return err
 						}
 						stack.Pop()
 					}
-					if err := rcvr.EndLevel(src, &rg); err != nil {
+					if err := rcvr.EndLevel(src, rg); err != nil {
 						return err
 					}
 				}
 			} else {
-				if err := rcvr.FinalBlock(src, &rg); err != nil {
+				if err := rcvr.FinalBlock(src, rg); err != nil {
 					return err
 				}
 			}

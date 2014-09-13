@@ -17,7 +17,12 @@ type Range struct {
 	MinOffs int
 	MaxOffs int
 	MinLine int
+	// MaxLine could be larger than actual value. E.g. it could be max-int.
 	MaxLine int
+}
+
+func (r Range) IsEmpty() bool {
+	return r.MinLine == 0
 }
 
 type ParserFactory func() (Parser, error)
@@ -26,13 +31,31 @@ type ParserFactory func() (Parser, error)
 type Receiver interface {
 	// Header of the block. It will be shown any pattern found in this block.
 	// The buffer should be available until corresponding EndLevel is called.
-	StartLevel(buffer []byte, header *Range) error
+	StartLevel(buffer []byte, header Range) error
 	
 	// Footer of the block. It will be shown any pattern found in this block.
-	EndLevel(buffer []byte, footer *Range) error
+	EndLevel(buffer []byte, footer Range) error
 	
 	// Final level block
-	FinalBlock(buffer []byte, body *Range) error
+	FinalBlock(buffer []byte, body Range) error
+}
+
+type ReceiverFunc struct {
+	StartLevelFunc func(buffer []byte, header Range) error
+	EndLevelFunc   func(buffer []byte, footer Range) error
+	FinalBlockFunc func(buffer []byte, body Range) error
+}
+
+func (rcvr ReceiverFunc) StartLevel(buffer []byte, header Range) error {
+	return rcvr.StartLevelFunc(buffer, header)
+}
+
+func (rcvr ReceiverFunc) EndLevel(buffer []byte, footer Range) error {
+	return rcvr.EndLevelFunc(buffer, footer)
+}
+
+func (rcvr ReceiverFunc) FinalBlock(buffer []byte, body Range) error {
+	return rcvr.FinalBlockFunc(buffer, body)
 }
 
 type Parser interface {

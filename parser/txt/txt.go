@@ -8,7 +8,7 @@ import (
 	"github.com/daviddengcn/sgrep/parser"
 )
 
-type Parser struct {}
+type Parser struct{}
 
 func init() {
 	sparser.Register(".txt", func() (sparser.Parser, error) {
@@ -21,13 +21,13 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 	if err != nil {
 		return err
 	}
-	
-	rcvr.FinalBlock(src, &sparser.Range {
+
+	rcvr.FinalBlock(src, sparser.Range{
 		MinOffs: 0,
 		MaxOffs: len(src) - 1,
 		MinLine: 1,
 		// grep package will handle this correctly
 		MaxLine: int(math.MaxInt32),
 	})
-	return  nil
+	return nil
 }

@@ -175,7 +175,7 @@ func scanNumber(s *scanner.Scanner, out chan Part, stop villa.Stop) (toStop bool
 
 func scanWord(s *scanner.Scanner, out chan Part, stop villa.Stop, word []rune) (toStop bool) {
 	start := s.Pos()
-	for i := 1; i < len(word); i++ {
+	for i := 0; i < len(word); i++ {
 		if r := s.Next(); r == scanner.EOF {
 			return output(out, stop, TP_EOF_UNEXPECTED, start, s.Pos())
 		} else if r != word[i] {
@@ -187,8 +187,9 @@ func scanWord(s *scanner.Scanner, out chan Part, stop villa.Stop, word []rune) (
 
 func scanKeyword(s *scanner.Scanner, out chan Part, stop villa.Stop) (toStop bool) {
 	start := s.Pos()
-	switch s.Next() {
+	switch s.Peek() {
 	case scanner.EOF:
+		s.Next()
 		return output(out, stop, TP_EOF_UNEXPECTED, start, s.Pos())
 	case 't':
 		return scanWord(s, out, stop, []rune("true"))
@@ -197,6 +198,7 @@ func scanKeyword(s *scanner.Scanner, out chan Part, stop villa.Stop) (toStop boo
 	case 'n':
 		return scanWord(s, out, stop, []rune("null"))
 	}
+	s.Next()
 	return output(out, stop, TP_ERROR, start, s.Pos())
 }
 
@@ -259,10 +261,10 @@ func scanObject(s *scanner.Scanner, out chan Part, stop villa.Stop) (toStop bool
 			if scanRune(s, out, stop, TP_COMMA, ',') {
 				return true
 			}
+			
 			skipWhitespaces(s)
 		}
 	}
-
 	return scanRune(s, out, stop, TP_OBJECT_END, '}')
 }
 
@@ -279,6 +281,10 @@ func scanArray(s *scanner.Scanner, out chan Part, stop villa.Stop) (toStop bool)
 			}
 
 			skipWhitespaces(s)
+			if s.Peek() != ',' {
+				break
+			}
+			
 			if scanRune(s, out, stop, TP_COMMA, ',') {
 				return true
 			}
@@ -330,7 +336,6 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 	var keyStart scanner.Position
 
 	var types villa.IntSlice
-
 loop:
 	for {
 		part := <-out
@@ -341,11 +346,10 @@ loop:
 		case TP_EOF_UNEXPECTED:
 			return EOF_UNEXPECTED
 		case TP_ERROR:
-			return InvalidFormat
+			return villa.NestErrorf(InvalidFormat, "line %d", part.start.Line)
 
 		case TP_OBJECT_END, TP_ARRAY_END:
-			rg := makeRange(part.start, part.end)
-			if err := rcvr.EndLevel(src, &rg); err != nil {
+			if err := rcvr.EndLevel(src, makeRange(part.start, part.end)); err != nil {
 				return err
 			}
 
@@ -355,8 +359,7 @@ loop:
 			types[len(types)-1] = TP_COLON
 
 		case TP_COMMA:
-			rg := makeRange(part.start, part.end)
-			if err := rcvr.FinalBlock(src, &rg); err != nil {
+			if err := rcvr.FinalBlock(src, makeRange(part.start, part.end)); err != nil {
 				return err
 			}
 
@@ -383,12 +386,12 @@ loop:
 			}
 
 			if part.tp == TP_OBJECT_START || part.tp == TP_ARRAY_START {
-				if err := rcvr.StartLevel(src, &rg); err != nil {
+				if err := rcvr.StartLevel(src, rg); err != nil {
 					return err
 				}
 				types.Add(part.tp)
 			} else {
-				if err := rcvr.FinalBlock(src, &rg); err != nil {
+				if err := rcvr.FinalBlock(src, rg); err != nil {
 					return err
 				}
 			}

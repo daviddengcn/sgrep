@@ -51,8 +51,7 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 		return err
 	}
 
-	rgPackage := rangeOfPos(fs, f.Package, f.Name.End()-1)
-	if err := rcvr.StartLevel(src, &rgPackage); err != nil {
+	if err := rcvr.StartLevel(src, rangeOfPos(fs, f.Package, f.Name.End()-1)); err != nil {
 		return err
 	}
 	for _, decl := range f.Decls {
@@ -69,18 +68,16 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 				endOfFunc = maxOfFieldLists(d.Type.Params)
 			}
 			header := rangeOfPos(fs, d.Type.Func, endOfFunc)
-			var body *sparser.Range
+			var body sparser.Range
 			if d.Body != nil && len(d.Body.List) > 0 {
 				list := d.Body.List
-				r := rangeOfPos(fs, list[0].Pos(), list[len(list)-1].End()-1)
-				body = &r
+				body = rangeOfPos(fs, list[0].Pos(), list[len(list)-1].End()-1)
 			}
-			var footer *sparser.Range
+			var footer sparser.Range
 			if d.Body != nil {
-				r := rangeOfPos(fs, d.Body.Rbrace, d.Body.Rbrace)
-				footer = &r
+				footer = rangeOfPos(fs, d.Body.Rbrace, d.Body.Rbrace)
 			}
-			if err := rcvr.StartLevel(src, &header); err != nil {
+			if err := rcvr.StartLevel(src, header); err != nil {
 				return err
 			}
 			if err := rcvr.FinalBlock(src, body); err != nil {
@@ -90,14 +87,13 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 				return err
 			}
 		default:
-			body := rangeOfPos(fs, d.Pos(), d.End()-1)
-			if err := rcvr.FinalBlock(src, &body); err != nil {
+			if err := rcvr.FinalBlock(src, rangeOfPos(fs, d.Pos(), d.End()-1)); err != nil {
 				return err
 			}
 		}
 	}
 
-	if err := rcvr.EndLevel(src, nil); err != nil {
+	if err := rcvr.EndLevel(src, sparser.Range{}); err != nil {
 		return err
 	}
 	return nil
