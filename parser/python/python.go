@@ -45,6 +45,10 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 			case '\t':
 				indent += 8 - indent % 8
 			default:
+				if rune(b) == '#' {
+					// ignore comments
+					continue
+				}
 				rg := sparser.Range {
 					MinOffs: i,
 					MaxOffs: len(line) - 1,
