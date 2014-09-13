@@ -43,7 +43,6 @@ func main() {
 
 	if len(fns) > 0 {
 		for _, fn := range fns {
-			fmt.Println("File: " + fn)
 			grep.Grep(re, fn, *pExt)
 		}
 	} else {

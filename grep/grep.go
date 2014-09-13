@@ -3,19 +3,19 @@ package grep
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"regexp"
-	"io"
-	
+
 	"github.com/daviddengcn/go-colortext"
 	"github.com/daviddengcn/go-villa"
 	"github.com/daviddengcn/sgrep/parser"
 	_ "github.com/daviddengcn/sgrep/parser/go"
-	_ "github.com/daviddengcn/sgrep/parser/xml"
-	_ "github.com/daviddengcn/sgrep/parser/txt"
 	_ "github.com/daviddengcn/sgrep/parser/json"
 	_ "github.com/daviddengcn/sgrep/parser/python"
+	_ "github.com/daviddengcn/sgrep/parser/txt"
+	_ "github.com/daviddengcn/sgrep/parser/xml"
 )
 
 func markAndPrint(ln int, re *regexp.Regexp, line []byte) {
@@ -52,7 +52,9 @@ type LevelInfo struct {
 }
 
 type Receiver struct {
-	re *regexp.Regexp
+	fn        villa.Path
+	fnPrinted bool
+	re        *regexp.Regexp
 	// 1-based
 	maxPrintedLine int
 	infos          []LevelInfo
@@ -66,6 +68,9 @@ func (rcvr *Receiver) beforeBody(level int) {
 		// Print the header
 		rcvr.showRange(info.headerBuffer, info.header)
 		info.headerPrinted = true
+	} else if !rcvr.fnPrinted {
+		fmt.Println("File: " + rcvr.fn)
+		rcvr.fnPrinted = true
 	}
 }
 
@@ -157,10 +162,10 @@ func (rcvr *Receiver) FinalBlock(buffer []byte, body *sparser.Range) error {
 		// no match, skipped
 		return nil
 	}
-	
+
 	rcvr.beforeBody(len(rcvr.infos) - 1)
 	rcvr.infos[len(rcvr.infos)-1].found = true
-	
+
 	if body != nil {
 		offs := body.MinOffs
 		for line := body.MinLine; line <= body.MaxLine; line++ {
@@ -186,7 +191,7 @@ func Grep(re *regexp.Regexp, fn villa.Path, ext string) {
 	if ext == "" {
 		ext = ".txt"
 	}
-	
+
 	var err error
 	p, err := sparser.New(ext)
 	if err != nil {
@@ -206,6 +211,7 @@ func Grep(re *regexp.Regexp, fn villa.Path, ext string) {
 	}
 
 	receiver := Receiver{
+		fn: fn,
 		re: re,
 		infos: []LevelInfo{
 			LevelInfo{
