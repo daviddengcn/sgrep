@@ -22,11 +22,16 @@ type Range struct {
 
 type ParserFactory func() (Parser, error)
 
+// Receiver is the interface for receiving the results of a parser.
 type Receiver interface {
-	// for non-final
+	// Header of the block. It will be shown any pattern found in this block.
+	// The buffer should be available until corresponding EndLevel is called.
 	StartLevel(buffer []byte, header *Range) error
+	
+	// Footer of the block. It will be shown any pattern found in this block.
 	EndLevel(buffer []byte, footer *Range) error
-	// final block
+	
+	// Final level block
 	FinalBlock(buffer []byte, body *Range) error
 }
 

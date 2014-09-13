@@ -15,6 +15,7 @@ import (
 	_ "github.com/daviddengcn/sgrep/parser/xml"
 	_ "github.com/daviddengcn/sgrep/parser/txt"
 	_ "github.com/daviddengcn/sgrep/parser/json"
+	_ "github.com/daviddengcn/sgrep/parser/python"
 )
 
 func markAndPrint(ln int, re *regexp.Regexp, line []byte) {
@@ -156,23 +157,22 @@ func (rcvr *Receiver) FinalBlock(buffer []byte, body *sparser.Range) error {
 		// no match, skipped
 		return nil
 	}
-
+	
 	rcvr.beforeBody(len(rcvr.infos) - 1)
 	rcvr.infos[len(rcvr.infos)-1].found = true
-
 	
 	if body != nil {
 		offs := body.MinOffs
 		for line := body.MinLine; line <= body.MaxLine; line++ {
 			end := findLineEnd(buffer, offs)
-			if end >= len(buffer) {
-				break
-			}
 
 			if rcvr.re.FindIndex(buffer[offs:end]) != nil {
 				rcvr.showLine(buffer, relocateLineStart(buffer, offs), line)
 			}
 
+			if end >= len(buffer) {
+				break
+			}
 			offs = end + 1
 		}
 	}
