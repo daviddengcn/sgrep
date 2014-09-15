@@ -12,9 +12,8 @@ import (
 	"github.com/daviddengcn/go-villa"
 	"github.com/daviddengcn/sgrep/parser"
 	_ "github.com/daviddengcn/sgrep/parser/go"
+	"github.com/daviddengcn/sgrep/parser/indent"
 	_ "github.com/daviddengcn/sgrep/parser/json"
-	_ "github.com/daviddengcn/sgrep/parser/python"
-	_ "github.com/daviddengcn/sgrep/parser/txt"
 	_ "github.com/daviddengcn/sgrep/parser/xml"
 )
 
@@ -192,10 +191,12 @@ func Grep(re *regexp.Regexp, fn villa.Path, ext string) {
 		ext = ".txt"
 	}
 
+	isIndent := false
 	var err error
 	p, err := sparser.New(ext)
 	if err != nil {
-		log.Fatalf("Creating Parser failed: %v", err)
+		p = indent.Parser{}
+		isIndent = true
 	}
 
 	var f io.Reader
@@ -221,6 +222,32 @@ func Grep(re *regexp.Regexp, fn villa.Path, ext string) {
 	}
 
 	if err := p.Parse(f, &receiver); err != nil {
+		if !isIndent && fn != "" {
+			// Try use indent parser
+			p = indent.Parser{}
+			iReceiver := Receiver{
+				fn: fn,
+				re: re,
+				infos: []LevelInfo{
+					LevelInfo{
+						headerPrinted: true,
+					},
+				},
+				maxPrintedLine: receiver.maxPrintedLine,
+				fnPrinted: receiver.fnPrinted,
+			}
+
+			ff, err := fn.Open()
+			if err != nil {
+				log.Fatalf("Open file %v failed: %v", fn, err)
+			}
+			defer ff.Close()
+			f = ff
+
+			if err := p.Parse(f, &iReceiver); err == nil {
+				return
+			}
+		}
 		log.Fatalf("Parsed failed: %v", err)
 	}
 }

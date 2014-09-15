@@ -32,10 +32,10 @@ type Receiver interface {
 	// Header of the block. It will be shown any pattern found in this block.
 	// The buffer should be available until corresponding EndLevel is called.
 	StartLevel(buffer []byte, header Range) error
-	
+
 	// Footer of the block. It will be shown any pattern found in this block.
 	EndLevel(buffer []byte, footer Range) error
-	
+
 	// Final level block
 	FinalBlock(buffer []byte, body Range) error
 }

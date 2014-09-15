@@ -1,10 +1,9 @@
-package python
+package indent
 
 import (
 	"bufio"
 	"errors"
 	"io"
-	//	"fmt"
 
 	"github.com/daviddengcn/go-villa"
 	"github.com/daviddengcn/sgrep/parser"
@@ -16,12 +15,6 @@ var (
 	EOF_UNEXPECTED = errors.New("EOF unexpected")
 	InvalidFormat  = errors.New("Invalid format")
 )
-
-func init() {
-	sparser.Register(".py", func() (sparser.Parser, error) {
-		return Parser{}, nil
-	})
-}
 
 const (
 	ST_INDENT = iota

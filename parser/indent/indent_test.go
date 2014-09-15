@@ -1,4 +1,4 @@
-package txt
+package indent
 
 import (
 	"fmt"
@@ -9,28 +9,28 @@ import (
 	"github.com/daviddengcn/sgrep/parser"
 )
 
-func Test(t *testing.T) {
+func TestBasic(t *testing.T) {
 	src :=
-		`{
-	"hello": "world",
-	"numbers": [
-		true,
-		{ "go": 1
-		},
-		4
-	]
-}`
+		`def hello():
+	do something
+	print "Hello, "
+hello()
+print "world"
+	wow`
 
 	exp :=
-		`1: F {
-	"hello": "world",
-	"numbers": [
-		true,
-		{ "go": 1
-		},
-		4
-	]
-}
+		`1: S def hello():
+2: S do something
+E
+3: S print "Hello, "
+E
+E
+4: S hello()
+E
+5: S print "world"
+6: S wow
+E
+E
 `
 
 	act := ""
@@ -55,6 +55,7 @@ func Test(t *testing.T) {
 
 		EndLevelFunc: func(buffer []byte, footer sparser.Range) error {
 			if footer.IsEmpty() {
+				act += "E\n"
 				return nil
 			}
 			act += fmt.Sprintf("%d: ", footer.MinLine)
