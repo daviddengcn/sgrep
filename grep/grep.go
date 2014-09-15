@@ -183,14 +183,8 @@ func (rcvr *Receiver) FinalBlock(buffer []byte, body sparser.Range) error {
 	return nil
 }
 
+// ext doesn't start with '.'
 func Grep(re *regexp.Regexp, fn villa.Path, ext string) {
-	if ext == "" {
-		ext = fn.Ext()
-	}
-	if ext == "" {
-		ext = ".txt"
-	}
-
 	isIndent := false
 	var err error
 	p, err := sparser.New(ext)
@@ -248,6 +242,6 @@ func Grep(re *regexp.Regexp, fn villa.Path, ext string) {
 				return
 			}
 		}
-		log.Fatalf("Parsed failed: %v", err)
+		log.Fatalf("Parse failed: %v", err)
 	}
 }

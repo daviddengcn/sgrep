@@ -21,7 +21,7 @@ var (
 )
 
 func init() {
-	sparser.Register(".json", func() (sparser.Parser, error) {
+	sparser.Register("json", func() (sparser.Parser, error) {
 		return Parser{}, nil
 	})
 }

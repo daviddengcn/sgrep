@@ -14,7 +14,7 @@ import (
 type Parser struct{}
 
 func init() {
-	sparser.Register(".xml", func() (sparser.Parser, error) {
+	sparser.Register("xml", func() (sparser.Parser, error) {
 		return Parser{}, nil
 	})
 }

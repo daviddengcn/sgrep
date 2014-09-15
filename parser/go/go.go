@@ -13,7 +13,7 @@ import (
 type Parser struct{}
 
 func init() {
-	sparser.Register(".go", func() (sparser.Parser, error) {
+	sparser.Register("go", func() (sparser.Parser, error) {
 		return Parser{}, nil
 	})
 }

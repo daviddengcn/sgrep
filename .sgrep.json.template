@@ -1,0 +1,6 @@
+{
+	aliases: {
+		// ext : [aliases]
+		xml: ["html", "htm", "shtml"]
+	}
+}
