@@ -26,9 +26,11 @@ func Foo() {
 	exp :=
 `1: S package example
 3: F import "testing"
-5: F type T struct {
+5: S type
+5: F T struct {
 	Field int
-}
+
+7: E }
 9: S func Foo() {
 10: F Hello
 11: E }

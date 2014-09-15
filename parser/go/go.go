@@ -86,6 +86,40 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 			if err := rcvr.EndLevel(src, footer); err != nil {
 				return err
 			}
+		case *ast.GenDecl:
+			if d.Lparen.IsValid() && len(d.Specs) > 0 {
+				header := rangeOfPos(fs, d.TokPos, d.Lparen)
+				body := rangeOfPos(fs, d.Specs[0].Pos(), d.Specs[len(d.Specs)-1].End() - 1)
+				footer := rangeOfPos(fs, d.Rparen, d.Rparen)
+				
+				if err := rcvr.StartLevel(src, header); err != nil {
+					return err
+				}
+				if err := rcvr.FinalBlock(src, body); err != nil {
+					return err
+				}
+				if err := rcvr.EndLevel(src, footer); err != nil {
+					return err
+				}
+			} else if len(d.Specs) == 1 && d.Tok != token.IMPORT {
+				header := rangeOfPos(fs, d.TokPos, d.TokPos + token.Pos(len(d.Tok.String()) - 1))
+				body := rangeOfPos(fs, d.Specs[0].Pos(), d.Specs[len(d.Specs)-1].End() - 2)
+				footer := rangeOfPos(fs, d.Specs[0].End() - 1, d.Specs[0].End() - 1)
+				
+				if err := rcvr.StartLevel(src, header); err != nil {
+					return err
+				}
+				if err := rcvr.FinalBlock(src, body); err != nil {
+					return err
+				}
+				if err := rcvr.EndLevel(src, footer); err != nil {
+					return err
+				}
+			} else {
+				if err := rcvr.FinalBlock(src, rangeOfPos(fs, d.Pos(), d.End()-1)); err != nil {
+					return err
+				}
+			}
 		default:
 			if err := rcvr.FinalBlock(src, rangeOfPos(fs, d.Pos(), d.End()-1)); err != nil {
 				return err
