@@ -34,6 +34,7 @@ const (
 	TP_FINAL
 	TP_START
 	TP_END
+	TP_COMMENT
 )
 
 func scanTo1(s *scanner.Scanner, target rune) bool {
@@ -125,6 +126,7 @@ func scanBlock(s *scanner.Scanner) (blockType int, name string) {
 			// comments
 			// find -->
 			scanTo3(s, '-', '-', '>')
+			return TP_COMMENT, ""
 		default:
 			// Attribute-List
 			// find >
@@ -267,6 +269,8 @@ func (Parser) Parse(in io.Reader, rcvr sparser.Receiver) error {
 					return err
 				}
 			}
+		case TP_COMMENT:
+			// ignore it
 		}
 	}
 

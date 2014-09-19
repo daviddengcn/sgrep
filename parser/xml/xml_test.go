@@ -13,7 +13,7 @@ func TestBasic(t *testing.T) {
 	src :=
 		`<?xml version="1.0" encoding="UTF-8"?>
 <go>
-	<hello>come on</hello><br/>
+	<hello>come on</hello><br/> <!-- Hello -->
 	<data><![CDATANew
  Line]]></data>
 </go>`
