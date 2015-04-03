@@ -242,6 +242,6 @@ func Grep(re *regexp.Regexp, fn villa.Path, ext string) {
 				return
 			}
 		}
-		log.Fatalf("Parse failed: %v", err)
+		log.Fatalf("Parse %v failed: %v", fn, err)
 	}
 }
